@@ -1,0 +1,288 @@
+/* 
+   Pagination example code
+
+   Joel Dietz
+   joel@titaniainc.com
+   fractastical.com
+   03/26/2010
+*/
+
+public class TaskController {
+	
+	// primarily for testing  
+	public Integer queryItemLimit 			{ get; set; }        
+	
+	// All for pagination
+	public TaskPage activePage              { get; set; }
+	public List<TaskPage> pages             { get; set; }
+	public List<TaskPage> activePages       { get; set; }
+	public Integer activePagesStartPNumber  { get; set; }
+	public Integer activePagesEndPNumber    { get; set; }
+	public Boolean hasMorePagesAfter        { get; set; }
+	public Boolean hasMorePagesBefore       { get; set; }
+	public Integer pnum                     { get; set; }
+	public Integer tasksPerPage         	{ get; set; } 
+ 
+    private static Integer pagesPerSetofActivePages = 10; 
+	
+		public TaskController() {
+		
+		currid = UserInfo.getUserID();
+		tasksPerPage = 10;		
+		posts = 0;      
+		note = '';
+		queryItemLimit = 1000;
+		
+	}
+	
+			
+	public void loadAssignedTasks() {
+		
+		assignedTasks = null;  
+		updateAssignedTasks();  
+		                
+        if (assignedTasks.size() > 0)
+		{
+		    pages = populatePages(assignedTasks, tasksPerPage);
+	    	pnum = 1;
+	        activePage = pages[0];
+	        pages[0].isActive = true;
+	    	updateActivePages();         	
+        }
+        else
+        {
+        	activePage = new taskPage(new List<ToDoItem__c>(),1);
+        	activePage.first = true;    
+        	activePage.last = true;  
+        }  
+	}
+	
+	
+	
+    public List<TaskPage> populatePages(List<ToDoItem__c> tasks, Integer ItemsPerPage) 
+    {
+        List<TaskPage> newPages = new List<TaskPage>();
+        Integer tasksAdded = 0;
+        Integer pagenumber = 0;
+    
+        // Adds tasks to TaskPages until either all tasks are added or the page limit is reached
+        while(tasksAdded < tasks.size())       
+        { 
+            pagenumber++;
+            List<ToDoItem__c> tasksToAdd = new List<ToDoItem__c>();
+        
+            for(Integer i=0; i < ItemsPerPage; i++) {
+                
+                if(tasksAdded == tasks.size())
+                    break;
+                    
+                tasksToAdd.add(tasks[tasksAdded]);
+                tasksAdded++;
+                    
+                }
+                
+            newPages.add(new TaskPage(tasksToAdd,pagenumber));
+            if(pagenumber == 1) {
+                newPages[0].first = true;
+            }
+            
+            //DEPRECATED now that we have ActivePages 
+            //if(pagenumber==pagesPerSetofActivePages)
+            //    break;  
+        
+        }   
+            
+        newPages[pagenumber-1].last=true;
+        
+        return newPages;
+    }
+    
+        
+    public void updateActivePages() 
+    {
+        activePages = new List<TaskPage>();
+        activePagesStartPNumber = pnum;
+        Integer startIndex = pnum - 1;        
+        Integer endIndex = startIndex + pagesPerSetofActivePages;
+                    
+        for (Integer i= startIndex; i < pages.size() && i < endIndex; i++)
+            activePages.add(pages[i]);
+        
+        activePagesEndPNumber = activePages[activePages.size() - 1].pageNumber;
+
+        if (activePagesEndPNumber == pages.size())
+            hasMorePagesAfter = false;
+        else 
+            hasMorePagesAfter = true;  
+                
+        if (activePagesStartPNumber == 1)
+            hasMorePagesBefore = false;
+        else
+            hasMorePagesBefore = true;
+            
+        setActivePage();
+                                                       
+    }
+
+    public void updateActivePagesBackwards() 
+    {
+        List<TaskPage> tempActivePages = new List<TaskPage>();
+        activePages = new List<TaskPage>();
+
+        activePagesEndPNumber = pnum;
+        Integer endIndex = pnum - 1;
+        Integer startIndex = endIndex - pagesPerSetofActivePages - 1;        
+
+        for (Integer i= endIndex; (i >= 0) && (i > startIndex); i--)
+            tempActivePages.add(pages[i]);    
+            
+        for(Integer i = (tempActivePages.size() - 1); i >= 0; i--) {
+            //System.debug('i:' + i);
+            activePages.add(tempActivePages[i]);
+        }  
+                    
+        activePagesStartPNumber = activePages[0].pageNumber;
+        
+        if (activePagesEndPNumber == pages.size())
+            hasMorePagesAfter = false;
+        else 
+            hasMorePagesAfter = true;
+                
+        if (activePagesStartPNumber == 1)  
+            hasMorePagesBefore = false;
+        else
+            hasMorePagesBefore = true;
+            
+        setActivePage();
+                                       
+    }
+    
+    public PageReference updatetasksPerPage() 
+    {
+        pnum = 1;
+        pages = populatePages(assignedTasks, tasksPerPage);
+        activePage = pages[0];   
+        pages[0].isActive = true;
+    	updateActivePages();  
+          
+        return null;    
+    }
+    
+    public void setActivePage() 
+    {
+        Integer oldPN = activePage.pageNumber;
+        activePage = pages[pnum - 1];
+        pages[oldPN - 1].isActive = false;
+        pages[pnum - 1].isActive = true;
+    }
+
+        
+    public void updateActivePage()
+    {
+        setActivePage();
+        if (pnum > activePagesEndPNumber)
+            updateActivePages();
+        if (pnum < activePagesStartPNumber)
+            updateActivePagesBackwards();           
+    }
+        
+    public void goToLast()
+    {
+        if (pages != null && pages.size() > 0)
+            pnum = pages.size()-1;
+        updateActivePage();
+        
+    }
+            
+    public List<SelectOption> gettasksPerPageSO()
+    {
+    	List<SelectOption> bbpso = new List<SelectOption>();
+    	bbpso.add(new SelectOption('1','1'));
+    	bbpso.add(new SelectOption('2','2'));
+    	bbpso.add(new SelectOption('5','5'));
+    	bbpso.add(new SelectOption('10','10'));
+    	bbpso.add(new SelectOption('20','20'));
+    	bbpso.add(new SelectOption('50','50'));
+    	return bbpso;  
+    }
+    
+    public void nextPage()
+    {
+      if (!activePage.last) 
+        pnum = activePage.pageNumber + 1;
+      updateActivePage();  
+    }
+    
+   public void prevPage()
+   {
+      if (!activePage.first)
+        pnum = activePage.pageNumber - 1;
+      updateActivePage();
+    }
+    
+    
+    class TaskPage 
+    {  
+  
+        public Boolean first 			{get; set;}
+        public Boolean last 			{get; set;}
+        public List <ToDoItem__c> pageTasks {get; set;}
+        public Integer pageNumber 		{get; set;}
+        public Boolean isActive 		{get; set;}
+
+        public TaskPage(List <ToDoItem__c> mi, Integer pn)
+        {
+            pageTasks = mi;   
+            pageNumber = pn;
+            isActive = false;
+            first = false;
+            last = false;
+        }  
+        
+    }
+    
+    static testMethod void testTaskPages()
+	{
+			User tu = TestUtility.createTestUser();
+			System.runAs(tu) 
+			{
+				TaskController tc = new TaskController();
+				List<ToDoItem__c> testTasks = new List<ToDoItem__c>();
+				ToDoItem__c sampleTask;
+				String descr = 'D' + math.rint(math.random() * 10000);
+				for(Integer i=0; i < 41; i++) 
+				{
+					sampleTask = new ToDoItem__c();
+					sampleTask.name = 'Test Task ' + i;
+					sampleTask.description__c = descr;
+					sampleTask.assigned_to__c = tu.id;
+					sampleTask.managed_by__c = tu.id;
+					testTasks.add(sampleTask);
+				}
+				insert testTasks;
+				tc.queryItemLimit = 41;
+				tc.loadAssignedTasks();
+				System.assertEquals(41, tc.getAssignedTasks().size());
+				System.assertEquals(5, tc.ActivePages.size());
+				System.assert(tc.ActivePage.first);
+				System.assertEquals(false, tc.ActivePage.last);
+				System.assertEquals(false, tc.hasMorePagesAfter);
+				System.assertEquals(false, tc.hasMorePagesBefore);
+				tc.tasksPerPage = 2;
+				tc.updatetasksPerPage();
+				System.assertEquals(21, tc.pages.size());
+				tc.pnum = 15;
+				tc.updateActivePage();
+				System.assert(tc.hasMorePagesBefore);
+				System.assertEquals(false,tc.hasMorePagesAfter);
+				System.assertEquals(false, tc.ActivePage.last);
+				System.assertEquals(false, tc.ActivePage.first);
+				tc.pnum = 21;
+				tc.updateActivePage();
+				System.assert(tc.hasMorePagesBefore);
+				System.assert(tc.ActivePage.last);
+				System.assertEquals(false,tc.hasMorePagesAfter);
+				System.assertEquals(false, tc.ActivePage.first);
+		}
+	}
+}

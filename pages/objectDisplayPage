@@ -1,0 +1,80 @@
+<apex:page controller="TaskController" action="{!loadAssignedTasks}">
+  
+  <apex:includeScript value="{!URLFOR($Resource.JQueryUICup,'jqueryUICup/js/jquery-1.3.2.min.js')}"/>
+  <apex:includeScript value="{!URLFOR($Resource.JQueryUICup,'jqueryUICup/js/jquery-ui-1.7.2.custom.min.js')}"/>
+  <apex:stylesheet value="{!URLFOR($Resource.JQueryUICup,'jqueryUICup/css/cupertino/jquery-ui-1.7.2.custom.css')}"/>
+    
+    <apex:pagemessages id="msgs" />
+    <apex:pageBlock id="recordsection" >
+         <div id="myrecordsection">
+        
+           <apex:pageBlockSection title="All Assigned Tasks" columns="1">
+        
+              <apex:pageBlockTable value="{!activePage.pageTasks}" title="Tasks to Review" var="td" id="ttr">
+             
+                <apex:column headerValue="Name">       
+                  <apex:outputField value="{!td.name}"/>             
+                </apex:column>
+    
+                <apex:column headerValue="Description">       
+                  <apex:outputField value="{!td.Description__c}"/>             
+                </apex:column>
+                
+                <apex:column headerValue="Assigned to">       
+                  <apex:outputField value="{!td.assigned_to__r.name}"/>             
+                </apex:column>
+    
+                <apex:column headerValue="Managed by">       
+                  <apex:outputField value="{!td.managed_by__r.name}"/>             
+                </apex:column>
+    
+                <apex:column headerValue="Completed?">    
+                      <apex:outputField value="{!td.Completed__c}"/><BR/>
+                </apex:column>
+                
+                <apex:column headerValue="Reviewed?">
+                       <apex:outputField value="{!td.Reviewed__c}"/><BR/> 
+                </apex:column>
+                                                 
+          </apex:pageBlockTable>
+          
+        </apex:pageBlockSection>
+        <apex:outputPanel id="taskPageControls">
+                <apex:commandLink rendered="{!NOT(activePage.first)}" value="First" rerender="recordsection" action="{!updateActivePage}">
+                        <apex:param name="pnum" value="1" assignto="{!pnum}" />
+                </apex:commandLink> &nbsp;&nbsp;           
+                <apex:commandLink rendered="{!hasMorePagesBefore}" value="<" rerender="recordsection" action="{!updateActivePagesBackwards}">
+                        <apex:param name="pnum" value="{!activePagesStartPNumber - 1}" assignto="{!pnum}" />
+                </apex:commandLink> &nbsp;&nbsp;           
+                <apex:commandLink rendered="{!NOT(activePage.first)}" value="Previous" rerender="recordsection" action="{!prevPage}" />
+                &nbsp;&nbsp;Page:
+                <apex:repeat value="{!activePages}" var="p">
+                    &nbsp;
+                    <apex:commandLink rendered="{!NOT(p.isActive)}" value="{!p.pagenumber}" rerender="recordsection" action="{!updateActivePage}">
+                        <apex:param name="pnum" id="pnum" value="{!p.pagenumber}" assignto="{!pnum}" />
+                    </apex:commandLink>
+                    <apex:outputText rendered="{!p.isActive}" value="{!p.pagenumber}" />
+                    &nbsp;&nbsp;
+                </apex:repeat>
+                 <apex:commandLink rendered="{!NOT(activePage.last)}" value="Next" rerender="recordsection" action="{!nextPage}" /> &nbsp;&nbsp;
+                <apex:commandLink rendered="{!hasMorePagesAfter}" value=">" rerender="recordsection" action="{!updateActivePages}">
+                        <apex:param name="pnum" value="{!activePagesEndPNumber + 1}" assignto="{!pnum}" />
+                </apex:commandLink> &nbsp;&nbsp;           
+                <apex:commandLink rendered="{!NOT(activePage.last)}" value="Last" action="{!goToLast}" rerender="recordsection" />
+                <apex:outputpanel id="updateTaskNPPControl" >
+                    &nbsp;Tasks to display per page:&nbsp;
+                    <apex:selectList size="1" value="{!TasksPerPage}" >  
+                        <apex:selectOptions value="{!TasksPerPageSO}" />    
+                        <apex:actionSupport event="onchange" action="{!updateTasksPerPage}" status="updateTasksStatus" reRender="recordsection" />  
+                    </apex:selectList>              
+                </apex:outputpanel>  
+                <BR/>
+           </apex:outputPanel>  
+       </div> <!-- end myTasks -->
+      <apex:actionStatus id="updateTasksStatus" onstart="$('#myrecordsection').hide('fast')" onstop="$('#myrecordsection').show();window.scrollTo(0,0);" >
+              <apex:facet name="start"><apex:image value="{!$Resource.GatheringInfoImage}"/></apex:facet>
+      </apex:actionStatus>
+   
+   </apex:pageBlock>
+
+</apex:page>
